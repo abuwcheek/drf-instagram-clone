@@ -15,6 +15,10 @@ urlpatterns = [
 ]
 
 
+
+from .views import RegisterUserProfileView
+
+
 urlpatterns += [
-     
+     path('register-user', RegisterUserProfileView.as_view())
 ]

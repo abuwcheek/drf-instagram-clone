@@ -17,6 +17,9 @@ class User(AbstractUser, BaseModel):
           blank=True,
           null=True
      )
+     image = models.ImageField(
+          upload_to='users/images/', null=True, blank=True
+     )
      birth_date = models.DateField(null=True, blank=True)
      email = models.EmailField(unique=True)
      phone_number = models.CharField(max_length=15)
