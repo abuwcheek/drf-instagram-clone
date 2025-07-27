@@ -43,3 +43,22 @@ class RegisterUserProfileSerializers(serializers.ModelSerializer):
           validated_data.pop('confirm_password')
           user = User.objects.create_user(**validated_data)
           return user
+
+
+
+class UserProfileDataSerializers(serializers.ModelSerializer):
+     formatted_last_login = serializers.SerializerMethodField()
+     class Meta:
+          model = User
+          fields = ['id', 'username', 'first_name', 'last_name', 'email', 'image', 'phone_number', 'birth_date', 'gender', 'formatted_last_login']
+
+     
+     def get_formatted_last_login(self, obj):
+          return obj.formatted_last_login if obj.last_login else "Hech qachon tizimga kirmagan"
+
+
+
+class UserProfileUpdateSerializers(serializers.ModelSerializer):
+     class Meta:
+          model = User
+          fields = ['id', 'username', 'first_name', 'last_name', 'email', 'image', 'phone_number', 'birth_date', ]

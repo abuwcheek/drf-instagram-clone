@@ -1,11 +1,11 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect, get_object_or_404
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from .models import User
-from .serializers import RegisterUserProfileSerializers
+from .serializers import RegisterUserProfileSerializers, UserProfileDataSerializers
 
 
 
@@ -44,4 +44,19 @@ class RegisterUserProfileView(APIView):
                'data': serializer.data
           }
 
+          return Response(data=data)
+     
+
+
+class UserProfileDataView(APIView):
+     permission_classes = [IsAuthenticated]
+     def get(self, request):
+          user = get_object_or_404(User, username=request.user.username, email=request.user.email)
+          serializers = UserProfileDataSerializers(user, context={'request': request})
+
+          data = {
+               'status': True,
+               'message': "salom, biz sizning sahifangizdamiz",
+               'data': serializers.data
+          }
           return Response(data=data)

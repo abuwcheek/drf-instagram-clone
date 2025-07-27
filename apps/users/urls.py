@@ -16,9 +16,10 @@ urlpatterns = [
 
 
 
-from .views import RegisterUserProfileView
+from .views import RegisterUserProfileView, UserProfileDataView
 
 
 urlpatterns += [
-     path('register-user', RegisterUserProfileView.as_view())
+     path('register-user', RegisterUserProfileView.as_view()),
+     path('profile-user', UserProfileDataView.as_view()),
 ]
