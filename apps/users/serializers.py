@@ -62,3 +62,15 @@ class UserProfileUpdateSerializers(serializers.ModelSerializer):
      class Meta:
           model = User
           fields = ['id', 'username', 'first_name', 'last_name', 'email', 'image', 'phone_number', 'birth_date', ]
+
+     
+     def validate_username(self, value):
+          if User.objects.filter(username=value).exists():
+               raise serializers.ValidationError("bu username band")
+          return value
+     
+
+     def validate_email(self, value):
+          if User.objects.filter(email=value).exists():
+               raise serializers.ValidationError("bu email band")
+          return value
