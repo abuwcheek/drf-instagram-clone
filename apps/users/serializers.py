@@ -1,5 +1,26 @@
 from rest_framework import serializers
+from django.contrib.auth import authenticate
 from .models import User
+
+
+
+class LogInUserSerializers(serializers.Serializer):
+     username = serializers.CharField()
+     password = serializers.CharField(write_only=True)
+
+
+     def validate(self, attrs):
+          username = attrs.get('username', None)
+          password = attrs.get('password', None)
+          
+          user = authenticate(username=username, password=password)
+          if not user:
+               raise serializers.ValidationError({'login': 'login yoki parol xato'})
+          
+          attrs['user'] = user
+          return attrs
+
+
 
 class RegisterUserProfileSerializers(serializers.ModelSerializer):
      # --- BU YERDA ASOSIY QISM ---

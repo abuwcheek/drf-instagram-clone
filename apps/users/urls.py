@@ -16,11 +16,12 @@ urlpatterns = [
 
 
 
-from .views import (RegisterUserProfileView, UserProfileDataView,
-                    UserProfileUpdateView, LogoutUserView)
+from .views import (LogInUserView, LogoutUserView,  RegisterUserProfileView, UserProfileDataView,
+                    UserProfileUpdateView, )
 
 
 urlpatterns += [
+     path('login-user', LogInUserView.as_view()),
      path('logout-user', LogoutUserView.as_view()),
      path('register-user', RegisterUserProfileView.as_view()),
      path('profile-user', UserProfileDataView.as_view()),

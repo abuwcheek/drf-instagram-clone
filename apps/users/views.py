@@ -4,10 +4,41 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth import logout
 from .models import User
-from .serializers import (RegisterUserProfileSerializers, UserProfileDataSerializers,
+from .serializers import (LogInUserSerializers, RegisterUserProfileSerializers, UserProfileDataSerializers,
                          UserProfileUpdateSerializers,)
+
+
+
+
+class LogInUserView(APIView):
+     permission_classes = [AllowAny]
+
+     def post(self, request):
+          serializer = LogInUserSerializers(data=request.data)
+          serializer.is_valid(raise_exception=True)
+          user = serializer.validated_data['user']
+
+          
+          # Foydalanuvchi uchun JWT token yaratish
+          refresh = RefreshToken.for_user(user)
+
+          data = {
+               'status': True,
+               'message': "tizimga muvaffaqiyatli kirdingiz",
+               'data': {
+                    'username': user.username,
+                    'email': user.email,
+                    'refresh': str(refresh),
+                    'access': str(refresh.access_token),
+                    'created_at': user.created_at
+               }
+          }
+          return Response(data=data)
 
 
 
@@ -15,11 +46,12 @@ class LogoutUserView(APIView):
      permission_classes = [IsAuthenticated]
 
      def post(self, request):
-          # request.user.auth_token.delete()  # Token bazadan o‘chiriladi
-          logout(request)  # Foydalanuvchini tizimdan chiqish
+          tokens = OutstandingToken.objects.filter(user=request.user)
+          for token in tokens:
+               BlacklistedToken.objects.get_or_create(token=token)
           data = {
                'status': True,
-               'message': 'tizimdan chiqtingiz'
+               'message': "tizimdan muvaffaqiyatli chiqdingiz"
           }
           return Response(data=data)
 
