@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.utils import timezone
 from django.contrib.auth import authenticate
 from .models import User
 
@@ -75,7 +76,7 @@ class UserProfileDataSerializers(serializers.ModelSerializer):
 
      
      def get_formatted_last_login(self, obj):
-          return obj.formatted_last_login if obj.last_login else "Hech qachon tizimga kirmagan"
+          return obj.formatted_last_login if obj.last_login else "hech qachon tizimga kirmagan"
 
 
 
@@ -95,3 +96,25 @@ class UserProfileUpdateSerializers(serializers.ModelSerializer):
           if User.objects.filter(email=value).exists():
                raise serializers.ValidationError("bu email band")
           return value
+
+
+
+class DeleteProfileSerializers(serializers.Serializer):
+     code = serializers.CharField(max_length=6)
+
+     def validate_code(self, value):
+          user = self.context['request'].user
+          if user.verification_code != value:
+               raise serializers.ValidationError("kod noto‘g‘ri!")
+          return value
+
+     def save(self, **kwargs):
+          user = self.context['request'].user
+          user.is_active = False
+          user.is_deleted = True
+          user.reserved_username = user.username
+          user.username = f"deleted_user_{user.pk}"
+          user.deleted_at = timezone.now()
+          user.save()
+          return {"username": user.reserved_username}
+

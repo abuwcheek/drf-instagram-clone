@@ -58,3 +58,18 @@ class User(AbstractUser, BaseModel):
                ago = f"{days} kun oldin"
 
           return f"{formatted_time} ({ago})"
+
+
+
+class DeleteProfile(User, BaseModel):
+     deleted_at = models.DateTimeField(null=True, blank=True)
+     reserved_username = models.CharField(max_length=150, null=True, blank=True)
+     verification_code = models.CharField(max_length=6, null=True, blank=True)
+
+     def delete_account(self):
+          # Username ni band qilib qo'yish
+          self.reserved_username = self.username
+          self.username = f"deleted_user_{self.pk}"
+          self.is_deleted = True
+          self.deleted_at = timezone.now()
+          self.save()
