@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.utils import timezone
 from django.contrib.auth import authenticate
-from .models import User
+from .models import User, DeleteProfile
 
 
 
@@ -99,22 +99,31 @@ class UserProfileUpdateSerializers(serializers.ModelSerializer):
 
 
 
-class DeleteProfileSerializers(serializers.Serializer):
-     code = serializers.CharField(max_length=6)
+class DeleteProfileSerializers(serializers.ModelSerializer):
+     code = serializers.CharField(write_only=True, required=True)
+
+     class Meta:
+          model = DeleteProfile
+          fields = ['verification_code']
 
      def validate_code(self, value):
-          user = self.context['request'].user
-          if user.verification_code != value:
-               raise serializers.ValidationError("kod noto‘g‘ri!")
+          profile = self.instance
+          now = timezone.now()
+
+          if not profile.verification_code:
+               raise serializers.ValidationError("Tasdiqlash kodi mavjud emas.")
+
+          if profile.verification_code != value:
+               raise serializers.ValidationError("Kod noto‘g‘ri.")
+
+          if profile.code_created_at and (now - profile.code_created_at).total_seconds() > 300:
+               raise serializers.ValidationError("Kod muddati tugagan (5 daqiqa).")
+
           return value
 
      def save(self, **kwargs):
-          user = self.context['request'].user
-          user.is_active = False
-          user.is_deleted = True
-          user.reserved_username = user.username
-          user.username = f"deleted_user_{user.pk}"
-          user.deleted_at = timezone.now()
-          user.save()
-          return {"username": user.reserved_username}
+          user = self.instance.user
+          user.delete()  # Hisobni o‘chiramiz
+          return super().save(**kwargs)
+
 

@@ -9,9 +9,11 @@ from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, Ou
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth import logout
+from django.utils import timezone
+import random
 
 from conf import settings
-from .models import User
+from .models import  User, DeleteProfile
 from .utils import generate_verification_code
 from .serializers import (LogInUserSerializers, RegisterUserProfileSerializers, 
                          UserProfileDataSerializers,UserProfileUpdateSerializers,
@@ -146,38 +148,55 @@ class RequestDeleteProfileView(APIView):
 
      def post(self, request):
           user = request.user
-          code = generate_verification_code()
-          user.verification_code = code
-          user.save()
+          delete_profile, _ = DeleteProfile.objects.get_or_create(user=user)
 
-          # Email yuborish
+          code, timestamp = generate_verification_code()
+          delete_profile.verification_code = code
+          delete_profile.code_created_at = timestamp
+          delete_profile.save()
+
           send_mail(
-               subject="Profil o'chirish tasdiq kodi",
-               message=f"Sizning tasdiq kodingiz: {code}",
+               subject="Instagram profil o‘chirish kodi",
+               message=f"Sizning tasdiq kodingiz: {code}\n\nKodingiz 5 daqiqa ichida amal qiladi.\n\n"
+                         f"Eslatma: agar bu hisobni o‘chirsangiz, qayta kira olmaysiz!",
                from_email=settings.DEFAULT_FROM_EMAIL,
                recipient_list=[user.email],
                fail_silently=False,
           )
 
-          data = {
+          return Response({
                "status": True,
-               "message": "tasdiq kodi emailga yuborildi."
-          }
-          return Response(data=data)
+               "message": "Tasdiqlash kodi emailga yuborildi"
+          })
 
 
 
-class DeleteAccountView(APIView):
+class DeleteProfileView(APIView):
      permission_classes = [IsAuthenticated]
 
      def post(self, request):
-          serializer = DeleteProfileSerializers(data=request.data, context={'request': request})
+          user = request.user
+          try:
+               delete_profile = user.deleted_profile
+          except DeleteProfile.DoesNotExist:
+               data = {
+                    "status": False,
+                    "message": "Avval tasdiqlash kodini oling."
+               }
+               return Response(data=data)
+
+          serializer = DeleteProfileSerializers(
+               delete_profile,
+               data=request.data,
+               context={'request': request},
+               partial=True
+          )
           if serializer.is_valid():
                serializer.save()
                data = {
                     'status': True,
-                    'message': "profil o‘chirildi.",
+                    'message': "Hisob muvaffaqiyatli o‘chirildi",
                     'data': serializer.data
                }
                return Response(data=data)
-          return Response(serializer.errors)
+          return Response(serializer.errors, status=400)

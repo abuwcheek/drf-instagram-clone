@@ -61,15 +61,27 @@ class User(AbstractUser, BaseModel):
 
 
 
-class DeleteProfile(User, BaseModel):
-     deleted_at = models.DateTimeField(null=True, blank=True)
+class DeleteProfile(BaseModel):
+     user = models.OneToOneField('User', on_delete=models.CASCADE, related_name='deleted_profile')
      reserved_username = models.CharField(max_length=150, null=True, blank=True)
      verification_code = models.CharField(max_length=6, null=True, blank=True)
+     deleted_at = models.DateTimeField(null=True, blank=True)
+     code_created_at = models.DateTimeField(null=True, blank=True)
+
+     class Meta:
+          verbose_name = 'Delete Profile'
+          verbose_name_plural = 'Delete Profile Plural'
 
      def delete_account(self):
-          # Username ni band qilib qo'yish
-          self.reserved_username = self.username
-          self.username = f"deleted_user_{self.pk}"
-          self.is_deleted = True
+          self.reserved_username = self.user.username
+          self.user.username = f"deleted_user_{self.user.pk}"
+          self.user.is_active = False
           self.deleted_at = timezone.now()
+          self.user.save()
           self.save()
+
+     def is_code_valid(self):
+          """ Kod 5 daqiqada eskiradi """
+          if self.code_created_at is None:
+               return False
+          return timezone.now() - self.code_created_at < timedelta(minutes=5)

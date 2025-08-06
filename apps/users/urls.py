@@ -17,7 +17,7 @@ urlpatterns = [
 
 
 from .views import (LogInUserView, LogoutUserView,  RegisterUserProfileView, UserProfileDataView,
-                    UserProfileUpdateView, RequestDeleteProfileView, DeleteAccountView)
+                    UserProfileUpdateView, RequestDeleteProfileView, DeleteProfileView)
 
 
 urlpatterns += [
@@ -27,5 +27,5 @@ urlpatterns += [
      path('profile-user', UserProfileDataView.as_view()),
      path('update-profile-user', UserProfileUpdateView.as_view()),
      path('request-delete-profile', RequestDeleteProfileView.as_view()),
-     path('delete-profile-user', DeleteAccountView.as_view()),
+     path('delete-profile-user', DeleteProfileView.as_view()),
 ]
