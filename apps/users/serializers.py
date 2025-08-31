@@ -72,7 +72,7 @@ class UserProfileDataSerializers(serializers.ModelSerializer):
      formatted_last_login = serializers.SerializerMethodField()
      class Meta:
           model = User
-          fields = ['id', 'username', 'first_name', 'last_name', 'email', 'image', 'phone_number', 'birth_date', 'gender', 'formatted_last_login']
+          fields = ['id', 'username', 'first_name', 'last_name', 'mini_bio', 'email', 'image', 'phone_number', 'birth_date', 'gender', 'formatted_last_login']
 
      
      def get_formatted_last_login(self, obj):
@@ -83,7 +83,7 @@ class UserProfileDataSerializers(serializers.ModelSerializer):
 class UserProfileUpdateSerializers(serializers.ModelSerializer):
      class Meta:
           model = User
-          fields = ['id', 'username', 'first_name', 'last_name', 'email', 'image', 'phone_number', 'birth_date', ]
+          fields = ['id', 'username', 'first_name', 'last_name', 'mini_bio', 'email', 'image', 'phone_number', 'birth_date', ]
 
      
      def validate_username(self, value):

@@ -6,6 +6,7 @@ from apps.base.models import BaseModel
 
 
 class User(AbstractUser, BaseModel):
+     mini_bio = models.CharField(max_length=300, null=True, blank=True)
      GENDER_CHOICES = [
           ('JINSI', 'Jinsi'),
           ('ERKAK', 'Erkak'),
@@ -25,7 +26,6 @@ class User(AbstractUser, BaseModel):
      birth_date = models.DateField(null=True, blank=True)
      email = models.EmailField(unique=True)
      phone_number = models.CharField(max_length=15)
-     mini_bio = models.CharField(max_length=300, null=True, blank=True)
 
 
      def __str__(self):
