@@ -53,6 +53,9 @@ class User(AbstractUser, BaseModel):
           elif difference < timedelta(days=1):
                hours = int(difference.total_seconds() / 3600)
                ago = f"{hours} soat oldin"
+          elif now == self.last_login:
+               ago = "hozirda online"
+               return (ago)
           else:
                days = difference.days
                ago = f"{days} kun oldin"
@@ -61,8 +64,12 @@ class User(AbstractUser, BaseModel):
 
 
 
-class DeleteProfile(BaseModel):
-     user = models.OneToOneField('User', on_delete=models.CASCADE, related_name='deleted_profile')
+class DeleteProfile(models.Model):
+     user = models.OneToOneField(
+          'User',
+          on_delete=models.CASCADE,
+          related_name='deleted_profile'
+     )
      reserved_username = models.CharField(max_length=150, null=True, blank=True)
      verification_code = models.CharField(max_length=6, null=True, blank=True)
      deleted_at = models.DateTimeField(null=True, blank=True)
@@ -70,18 +77,21 @@ class DeleteProfile(BaseModel):
 
      class Meta:
           verbose_name = 'Delete Profile'
-          verbose_name_plural = 'Delete Profile Plural'
+          verbose_name_plural = 'Delete Profiles'
 
      def delete_account(self):
+          """Foydalanuvchini aktiv emas qilib belgilash va username ni o‘zgartirish"""
           self.reserved_username = self.user.username
           self.user.username = f"deleted_user_{self.user.pk}"
           self.user.is_active = False
+          if hasattr(self.user, "is_deleted"):
+               self.user.is_deleted = True   # agar User modelida is_deleted bo‘lsa
           self.deleted_at = timezone.now()
           self.user.save()
           self.save()
 
      def is_code_valid(self):
-          """ Kod 5 daqiqada eskiradi """
-          if self.code_created_at is None:
+          """Tasdiqlash kodi 5 daqiqa amal qiladi"""
+          if not self.code_created_at:
                return False
           return timezone.now() - self.code_created_at < timedelta(minutes=5)

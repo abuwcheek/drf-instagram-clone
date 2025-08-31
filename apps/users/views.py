@@ -14,7 +14,7 @@ import random
 
 from conf import settings
 from .models import  User, DeleteProfile
-from .utils import generate_verification_code
+from .utils import send_delete_code_email
 from .serializers import (LogInUserSerializers, RegisterUserProfileSerializers, 
                          UserProfileDataSerializers,UserProfileUpdateSerializers,
                          DeleteProfileSerializers)
@@ -110,7 +110,7 @@ class UserProfileDataView(APIView):
 
           data = {
                'status': True,
-               'message': "salom, biz sizning sahifangizdamiz",
+               'message': "salom, biz sizning shaxsiy sahifangizdamiz",
                'data': serializers.data
           }
           return Response(data=data)
@@ -144,59 +144,55 @@ class UserProfileUpdateView(APIView):
 
 
 class RequestDeleteProfileView(APIView):
+     """Foydalanuvchiga profilni o‘chirish uchun kod yuborish"""
      permission_classes = [IsAuthenticated]
 
      def post(self, request):
           user = request.user
-          delete_profile, _ = DeleteProfile.objects.get_or_create(user=user)
+          delete_profile, created = DeleteProfile.objects.get_or_create(user=user)
 
-          code, timestamp = generate_verification_code()
+          # 6 xonali kod generatsiya qilamiz
+          code = str(random.randint(100000, 999999))
           delete_profile.verification_code = code
-          delete_profile.code_created_at = timestamp
+          delete_profile.code_created_at = timezone.now()
           delete_profile.save()
 
-          send_mail(
-               subject="Instagram profil o‘chirish kodi",
-               message=f"Sizning tasdiq kodingiz: {code}\n\nKodingiz 5 daqiqa ichida amal qiladi.\n\n"
-                         f"Eslatma: agar bu hisobni o‘chirsangiz, qayta kira olmaysiz!",
-               from_email=settings.DEFAULT_FROM_EMAIL,
-               recipient_list=[user.email],
-               fail_silently=False,
-          )
+          # Email orqali yuboramiz
+          send_delete_code_email(user.email, code)
 
-          return Response({
-               "status": True,
-               "message": "Tasdiqlash kodi emailga yuborildi"
-          })
+          data = {
+               "message": "Profilni o‘chirish uchun kod emailingizga yuborildi.",
+               "email": user.email
+          }
+          return Response(data=data)
 
 
 
-class DeleteProfileView(APIView):
+class DeleteProfileUserView(APIView):
+     """Foydalanuvchi kod yuborib profilini o‘chiradi"""
      permission_classes = [IsAuthenticated]
 
      def post(self, request):
-          user = request.user
           try:
-               delete_profile = user.deleted_profile
+               delete_profile = request.user.deleted_profile
           except DeleteProfile.DoesNotExist:
                data = {
-                    "status": False,
-                    "message": "Avval tasdiqlash kodini oling."
+                    "message": "Profil o‘chirish uchun so‘rov yuborilmagan."
                }
                return Response(data=data)
 
           serializer = DeleteProfileSerializers(
-               delete_profile,
+               instance=delete_profile,
                data=request.data,
-               context={'request': request},
-               partial=True
+               context={'request': request}
           )
+
           if serializer.is_valid():
                serializer.save()
                data = {
-                    'status': True,
-                    'message': "Hisob muvaffaqiyatli o‘chirildi",
-                    'data': serializer.data
+                    "message": "Profilingiz muvaffaqiyatli o‘chirildi.",
+                    'username': serializer.user.username,
+                    'email': serializer.user.email
                }
                return Response(data=data)
-          return Response(serializer.errors, status=400)
+          return Response(data=serializer.errors)

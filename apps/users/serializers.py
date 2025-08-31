@@ -52,7 +52,7 @@ class RegisterUserProfileSerializers(serializers.ModelSerializer):
           return value
 
      def validate_email(self, value):
-          if User.objects.filter(email=value).exists():
+          if User.objects.filter(email=value, is_active=True, is_deleted=False).exists():
                raise serializers.ValidationError("bu email allaqchon ro'yxatdan o'tgan")
           return value
 
@@ -104,7 +104,7 @@ class DeleteProfileSerializers(serializers.ModelSerializer):
 
      class Meta:
           model = DeleteProfile
-          fields = ['verification_code']
+          fields = ['code']  # faqat kod kiritiladi
 
      def validate_code(self, value):
           profile = self.instance
@@ -122,8 +122,6 @@ class DeleteProfileSerializers(serializers.ModelSerializer):
           return value
 
      def save(self, **kwargs):
-          user = self.instance.user
-          user.delete()  # Hisobni o‘chiramiz
-          return super().save(**kwargs)
-
-
+          """Agar kod to‘g‘ri bo‘lsa, foydalanuvchini o‘chiradi"""
+          self.instance.delete_account()
+          return self.instance
