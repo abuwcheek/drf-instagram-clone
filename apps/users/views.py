@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from rest_framework import generics
+from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -17,7 +17,8 @@ from .models import  User, DeleteProfile
 from .utils import send_delete_code_email
 from .serializers import (LogInUserSerializers, RegisterUserProfileSerializers, 
                          UserProfileDataSerializers,UserProfileUpdateSerializers,
-                         DeleteProfileSerializers)
+                         DeleteProfileSerializers, PasswordResetRequestSerializer, 
+                         PasswordResetConfirmSerializer)
 
 
 
@@ -196,3 +197,46 @@ class DeleteProfileUserView(APIView):
                }
                return Response(data=data)
           return Response(data=serializer.errors)
+
+
+
+
+
+# reset password
+class PasswordResetRequestView(GenericAPIView):
+     """
+     Foydalanuvchi email yuboradi → unga password reset link jo‘natiladi
+     """
+     serializer_class = PasswordResetRequestSerializer
+
+     def post(self, request, *args, **kwargs):
+          serializer = self.get_serializer(
+               data=request.data, 
+               context={"request": request}
+          )
+          serializer.is_valid(raise_exception=True)
+          serializer.save()
+          data = {
+               'status': True,
+               "message": "Parolni tiklash uchun email yuborildi 📩",
+               }
+          return Response(data=data)
+
+
+
+class PasswordResetConfirmView(GenericAPIView):
+     """
+     Foydalanuvchi token + yangi parol yuboradi → parol yangilanadi
+     """
+     serializer_class = PasswordResetConfirmSerializer
+
+     def post(self, request, *args, **kwargs):
+          serializer = self.get_serializer(data=request.data)
+          serializer.is_valid(raise_exception=True)
+          result = serializer.save()  # bu serializerdan {"detail": "..."} qaytadi
+          data = {
+               'status': True,
+               'message': 'Parol tasdiqlandi',
+               'data': result
+          }
+          return Response(data=data)

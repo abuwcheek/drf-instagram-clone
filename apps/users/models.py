@@ -95,3 +95,59 @@ class DeleteProfile(models.Model):
           if not self.code_created_at:
                return False
           return timezone.now() - self.code_created_at < timedelta(minutes=5)
+
+
+
+import uuid
+import hashlib
+from datetime import timedelta
+from django.db import models
+from django.conf import settings
+from django.utils import timezone
+
+
+class PasswordResetToken(models.Model):
+     """
+     Foydalanuvchi parolini tiklash uchun maxsus token modeli.
+     """
+
+     user = models.ForeignKey(User,
+          on_delete=models.CASCADE,
+          related_name="password_reset_tokens"
+     )
+     token = models.CharField(
+          max_length=255,
+          unique=True,
+          db_index=True
+     )
+     created_at = models.DateTimeField(auto_now_add=True)
+     expires_at = models.DateTimeField()
+     is_used = models.BooleanField(default=False)
+     ip_address = models.GenericIPAddressField(null=True, blank=True)  # optional
+     user_agent = models.TextField(null=True, blank=True)  # optional
+
+     def save(self, *args, **kwargs):
+          """
+          Yangi yozuv yaratilayotganda avtomatik token va expiry vaqtini belgilaydi.
+          """
+          if not self.id:  # faqat yangi yozuv uchun
+               raw_token = str(uuid.uuid4()) + str(uuid.uuid4())  # tasodifiy UUID
+               self.token = hashlib.sha256(raw_token.encode()).hexdigest()  # DBda hash saqlaymiz
+               self.expires_at = timezone.now() + timedelta(hours=1)  # 1 soat amal qiladi
+          super().save(*args, **kwargs)
+
+     def is_valid(self):
+          """
+          Token amal qilish muddatini va ishlatilmaganligini tekshiradi.
+          """
+          return not self.is_used and timezone.now() < self.expires_at
+
+     def mark_as_used(self):
+          """
+          Token bir marta ishlatilgandan keyin bloklanadi.
+          """
+          self.is_used = True
+          self.save(update_fields=["is_used"])
+
+     def __str__(self):
+          return f"Password reset token for {self.user} (valid={self.is_valid()})"
