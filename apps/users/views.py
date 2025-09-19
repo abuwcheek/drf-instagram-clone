@@ -207,6 +207,7 @@ class PasswordResetRequestView(GenericAPIView):
      """
      Foydalanuvchi email yuboradi → unga password reset link jo‘natiladi
      """
+     permission_classes = [AllowAny]
      serializer_class = PasswordResetRequestSerializer
 
      def post(self, request, *args, **kwargs):

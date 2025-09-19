@@ -106,6 +106,7 @@ from django.conf import settings
 from django.utils import timezone
 
 
+
 class PasswordResetToken(models.Model):
      """
      Foydalanuvchi parolini tiklash uchun maxsus token modeli.
