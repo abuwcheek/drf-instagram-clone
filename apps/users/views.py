@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from rest_framework.generics import GenericAPIView
+from rest_framework.generics import GenericAPIView, RetrieveUpdateAPIView, DestroyAPIView, UpdateAPIView
+from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -18,7 +19,7 @@ from .utils import send_delete_code_email
 from .serializers import (LogInUserSerializers, RegisterUserProfileSerializers, 
                          UserProfileDataSerializers,UserProfileUpdateSerializers,
                          DeleteProfileSerializers, PasswordResetRequestSerializer, 
-                         PasswordResetConfirmSerializer)
+                         PasswordResetConfirmSerializer, ChangePasswordSerializers)
 
 
 
@@ -198,6 +199,32 @@ class DeleteProfileUserView(APIView):
                return Response(data=data)
           return Response(data=serializer.errors)
 
+
+
+
+# change password
+class ChangePasswordView(APIView):
+     permission_classes = [IsAuthenticated]
+
+
+     def put(self, request, *args, **kwargs):
+          user = request.user
+          serializer = ChangePasswordSerializers(data=request.data, instance=user)
+
+          if serializer.is_valid(raise_exception=True):
+               serializer.save()
+               data = {
+                    'status': True,
+                    'message': "Parol muvaffaqiyatli yangilandi",
+               }
+               return Response(data=data)
+          
+          data = {
+               'status': False,
+               'message': "Xatolik yuz berdi",
+               'data': serializer.errors
+          }
+          return Response(data=data)
 
 
 

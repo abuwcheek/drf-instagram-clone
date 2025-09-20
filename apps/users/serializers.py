@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.utils import timezone
 from django.contrib.auth import authenticate
+import re
 from .models import User, DeleteProfile
 
 
@@ -206,3 +207,32 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
                # 🔑 Shu yerda message qaytaramiz
           return {"detail": "Parol yangilandi ✅"}
+
+
+
+class ChangePasswordSerializers(serializers.Serializer):
+     password1 = serializers.CharField(write_only=True, required=True)
+     password2 = serializers.CharField(write_only=True, required=True)
+
+
+     def validate_password1(self, value):
+          if len(value) < 8:
+               raise serializers.ValidationError("Parol kamida 8ta belgidan iborat bo'lishi kerak!")
+          
+          if not re.match(r'^[A-Za-z0-9_]+$', value):
+               raise serializers.ValidationError("Parolda faqat lotin harflari, raqamlar va pastki chiziq bo'lishi mumkin!")
+          
+          return value
+     
+
+     def validate(self, attrs):
+          if attrs['password1'] != attrs['password2']:
+               raise serializers.ValidationError({"password": "Parollar bir biriga mos emas"})
+          
+          return attrs
+     
+
+     def update(self, instance, validated_data):
+          instance.set_password(validated_data['password2'])
+          instance.save()
+          return instance
