@@ -11,55 +11,30 @@ def send_delete_code_email(to_email, code):
 
 
 
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.contrib.auth.tokens import default_token_generator
 
 
-# reset password
-import secrets
-import hashlib
-from django.utils import timezone
-from datetime import timedelta
-from django.conf import settings
-from django.core.mail import send_mail
-from .models import PasswordResetToken
 
+def send_password_reset_email(user):
+     # foydalanuvchi ID sini kodlash
+     uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+     # parol tiklash token generatsiya qilish
+     token = default_token_generator.make_token(user)
 
-def generate_password_reset_token(user, ip_address=None, user_agent=None):
-     """
-     Foydalanuvchi uchun parolni tiklash tokenini yaratadi va DB’da saqlaydi.
-     """
-
-     # Avval eski tokenlarni bekor qilish
-     PasswordResetToken.objects.filter(user=user, is_used=False).update(is_used=True)
-
-     # Tasodifiy token yaratamiz
-     raw_token = secrets.token_urlsafe(48)  # foydalanuvchiga yuboriladigan token
-     hashed_token = hashlib.sha256(raw_token.encode()).hexdigest()
-
-     # Yangi token obyektini yaratamiz
-     reset_token = PasswordResetToken.objects.create(
-          user=user,
-          token=hashed_token,
-          expires_at=timezone.now() + timedelta(hours=1),  # 1 soat amal qiladi
-          ip_address=ip_address,
-          user_agent=user_agent
-     )
-
-     return raw_token, reset_token
-
-
-def send_password_reset_email(user, raw_token):
-     """
-     Foydalanuvchiga parolni tiklash emailini yuboradi.
-     """
-     reset_link = f"http://127.0.0.1:8000/reset-password?token={raw_token}"  # front link
+     # reset qilish havolasi (API endpoint)
+     reset_link = f"http://127.0.0.1:8000/user/password-reset/confirm/{uidb64}/{token}/"
 
      subject = "Parolni tiklash"
-     message = f"Salom, {user.username}!\n\nParolingizni tiklash uchun quyidagi linkga bosing:\n{reset_link}\n\nAgar siz so‘ramagan bo‘lsangiz, bu xabarni e’tiborsiz qoldiring."
-     
+     message = f"Quyidagi API havola orqali parolingizni qayta o‘rnating:\n\n{reset_link}"
+     from_email = settings.DEFAULT_FROM_EMAIL
+
+     # email yuborish
      send_mail(
           subject,
           message,
-          settings.DEFAULT_FROM_EMAIL,
+          from_email,
           [user.email],
           fail_silently=False,
      )

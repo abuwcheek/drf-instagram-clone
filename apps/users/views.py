@@ -15,11 +15,11 @@ import random
 
 from conf import settings
 from .models import  User, DeleteProfile
-from .utils import send_delete_code_email
+from .utils import send_delete_code_email, send_password_reset_email
 from .serializers import (LogInUserSerializers, RegisterUserProfileSerializers, 
                          UserProfileDataSerializers,UserProfileUpdateSerializers,
-                         DeleteProfileSerializers, PasswordResetRequestSerializer, 
-                         PasswordResetConfirmSerializer, ChangePasswordSerializers)
+                         DeleteProfileSerializers, ChangePasswordSerializers,
+                         PasswordResetByUsernameSerializers, PasswordResetConfirmSerializers,)
 
 
 
@@ -229,42 +229,47 @@ class ChangePasswordView(APIView):
 
 
 
-# reset password
-class PasswordResetRequestView(GenericAPIView):
-     """
-     Foydalanuvchi email yuboradi → unga password reset link jo‘natiladi
-     """
+# password reset
+class PasswordResetByUsernameView(APIView):
      permission_classes = [AllowAny]
-     serializer_class = PasswordResetRequestSerializer
 
      def post(self, request, *args, **kwargs):
-          serializer = self.get_serializer(
-               data=request.data, 
-               context={"request": request}
-          )
+          serializer = PasswordResetByUsernameSerializers(data=request.data)
           serializer.is_valid(raise_exception=True)
-          serializer.save()
-          data = {
-               'status': True,
-               "message": "Parolni tiklash uchun email yuborildi 📩",
+          user = serializer.save()
+
+          username = serializer.validated_data['username']
+          try:
+               user = User.objects.get(username=username)
+               email = user.email
+
+               # reset email yuborish
+               send_password_reset_email(user)   # utils ichida function
+               data = {
+                    'status': True,
+                    'message': f"Agar {username} foydalanuvchisi mavjud bo‘lsa",
+                    'email': f"Havola {email} manziliga yuborildi."
                }
+          except User.DoesNotExist:
+               data = {
+                    'status': False,
+                    'message': "Bunday foydalanuvchi mavjud emas."
+               }
+
           return Response(data=data)
 
 
 
-class PasswordResetConfirmView(GenericAPIView):
-     """
-     Foydalanuvchi token + yangi parol yuboradi → parol yangilanadi
-     """
-     serializer_class = PasswordResetConfirmSerializer
+class PasswordResetConfirmView(APIView):
+     permission_classes = [AllowAny]
 
-     def post(self, request, *args, **kwargs):
-          serializer = self.get_serializer(data=request.data)
+     def post(self, request, uidb64, token, *args, **kwargs):
+          serializer = PasswordResetConfirmSerializers(data=request.data)
           serializer.is_valid(raise_exception=True)
-          result = serializer.save()  # bu serializerdan {"detail": "..."} qaytadi
+          serializer.save(token=token, uidb64=uidb64)
+
           data = {
                'status': True,
-               'message': 'Parol tasdiqlandi',
-               'data': result
+               'message': "Parol muvaffaqiyatli yangilandi."
           }
           return Response(data=data)

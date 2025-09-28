@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from django.utils import timezone
 from django.contrib.auth import authenticate
+from django.utils.http import urlsafe_base64_decode
+from django.contrib.auth.tokens import default_token_generator
 import re
 from .models import User, DeleteProfile
 
@@ -129,87 +131,6 @@ class DeleteProfileSerializers(serializers.ModelSerializer):
 
 
 
-
-# reset password
-from rest_framework import serializers
-from django.contrib.auth import get_user_model
-from django.utils import timezone
-import hashlib
-
-from .models import PasswordResetToken
-from .utils import generate_password_reset_token, send_password_reset_email
-
-User = get_user_model()
-
-
-class PasswordResetRequestSerializer(serializers.Serializer):
-     email = serializers.EmailField()
-
-     def validate_email(self, value):
-          try:
-               user = User.objects.get(email=value, is_active=True)
-          except User.DoesNotExist:
-               raise serializers.ValidationError("Bunday email topilmadi yoki aktiv emas.")
-          self.context["user"] = user
-          return value
-
-     def save(self, **kwargs):
-          request = self.context.get("request")
-          user = self.context["user"]
-
-          ip_address = request.META.get("REMOTE_ADDR")
-          user_agent = request.META.get("HTTP_USER_AGENT", "")
-
-          # Token yaratamiz
-          raw_token, _ = generate_password_reset_token(user, ip_address, user_agent)
-
-          # Email yuboramiz
-          send_password_reset_email(user, raw_token)
-
-
-
-class PasswordResetConfirmSerializer(serializers.Serializer):
-     token = serializers.CharField()
-     new_password = serializers.CharField(write_only=True, min_length=6)
-     confirm_password = serializers.CharField(write_only=True, min_length=6)
-
-     def validate(self, data):
-          if data["new_password"] != data["confirm_password"]:
-               raise serializers.ValidationError("Parollar mos emas.")
-          return data
-
-     def validate_token(self, value):
-          hashed_token = hashlib.sha256(value.encode()).hexdigest()
-
-          try:
-               reset_obj = PasswordResetToken.objects.get(
-                    token=hashed_token,
-                    is_used=False,
-                    expires_at__gte=timezone.now()
-               )
-          except PasswordResetToken.DoesNotExist:
-               raise serializers.ValidationError("Token yaroqsiz yoki muddati o‘tgan.")
-
-          self.context["reset_obj"] = reset_obj
-          return value
-
-     def save(self, **kwargs):
-          reset_obj = self.context["reset_obj"]
-          user = reset_obj.user
-
-          # Yangi parolni o‘rnatamiz
-          user.set_password(self.validated_data["new_password"])
-          user.save()
-
-          # Token ishlatilgan deb belgilaymiz
-          reset_obj.is_used = True
-          reset_obj.save()
-
-               # 🔑 Shu yerda message qaytaramiz
-          return {"detail": "Parol yangilandi ✅"}
-
-
-
 class ChangePasswordSerializers(serializers.Serializer):
      password1 = serializers.CharField(write_only=True, required=True)
      password2 = serializers.CharField(write_only=True, required=True)
@@ -236,3 +157,53 @@ class ChangePasswordSerializers(serializers.Serializer):
           instance.set_password(validated_data['password2'])
           instance.save()
           return instance
+
+
+
+from .utils import send_password_reset_email
+from .models import PasswordResetCode, User
+from django.utils import timezone
+from datetime import timedelta
+
+
+class PasswordResetByUsernameSerializers(serializers.Serializer):
+     username = serializers.CharField(required=True)
+
+     def save(self, **kwargs):
+          username = self.validated_data["username"]
+          try:
+               user = User.objects.get(username=username)
+          except User.DoesNotExist:
+               return None
+
+          PasswordResetCode.objects.filter(user=user, is_used=False).update(is_used=True)
+          token = PasswordResetCode.objects.create(user=user)
+          send_password_reset_email(user)
+          return token
+
+
+
+class PasswordResetConfirmSerializers(serializers.Serializer):
+     password = serializers.CharField(write_only=True, min_length=8)
+     password2 = serializers.CharField(write_only=True, min_length=8)
+
+     def validate(self, attrs):
+          if attrs["password"] != attrs["password2"]:
+               raise serializers.ValidationError({"password2": "Parollar bir biriga mos emas"})
+          return attrs
+
+     def save(self, token, uidb64, **kwargs):
+          try:
+               uid = urlsafe_base64_decode(uidb64).decode()
+               user = User.objects.get(pk=uid)
+               
+          except (User.DoesNotExist, ValueError, TypeError, OverflowError):
+               raise serializers.ValidationError({"uidb64": "Foydalanuvchi topilmadi"})
+
+          if not default_token_generator.check_token(user, token):
+               raise serializers.ValidationError({"token": "Token yaroqsiz yoki muddati o‘tgan"})
+
+
+          user.set_password(self.validated_data["password"])
+          user.save(update_fields=["password"])
+          return user

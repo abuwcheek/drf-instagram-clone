@@ -17,8 +17,9 @@ urlpatterns = [
 
 
 from .views import (LogInUserView, LogoutUserView,  RegisterUserProfileView, UserProfileDataView,
-                    UserProfileUpdateView, RequestDeleteProfileView, DeleteProfileUserView,
-                    PasswordResetRequestView, PasswordResetConfirmView, ChangePasswordView)
+                    UserProfileUpdateView, RequestDeleteProfileView, DeleteProfileUserView, ChangePasswordView, 
+                    PasswordResetByUsernameView, PasswordResetConfirmView)
+
 
 
 urlpatterns += [
@@ -30,6 +31,6 @@ urlpatterns += [
      path('request-delete-profile', RequestDeleteProfileView.as_view()),
      path('delete-profile-user', DeleteProfileUserView.as_view()),
      path('change-password', ChangePasswordView.as_view()),
-     path('password-reset/request/', PasswordResetRequestView.as_view()),
-     path('password-reset/confirm/', PasswordResetConfirmView.as_view()),
+     path("password-reset/by-username/", PasswordResetByUsernameView.as_view()),
+     path("password-reset/confirm/<str:uidb64>/<str:token>/", PasswordResetConfirmView.as_view()),
 ]
