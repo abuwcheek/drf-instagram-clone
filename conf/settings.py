@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'apps.base',
     'apps.users',
     'apps.content',
+    'apps.chatbotai',
 
     'rest_framework',
     'rest_framework_simplejwt',
